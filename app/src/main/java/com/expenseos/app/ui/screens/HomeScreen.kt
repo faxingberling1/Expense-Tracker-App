@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -32,6 +33,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
@@ -103,7 +105,7 @@ fun HomeScreen(
 
     Surface(
         modifier = Modifier.fillMaxSize(),
-        color = Paper
+        color = Color.Transparent
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             LazyColumn(
@@ -115,6 +117,12 @@ fun HomeScreen(
                     Header(isPremium = uiState.isPremiumUser)
                 }
                 item {
+                    GamificationStrip(
+                        streak = uiState.currentStreak,
+                        challenge = uiState.dailyChallenge
+                    )
+                }
+                item {
                     HealthCard(
                         score = uiState.health.score,
                         label = uiState.health.label,
@@ -124,6 +132,11 @@ fun HomeScreen(
                 if (uiState.insights.isNotEmpty()) {
                     item {
                         InsightsRow(insights = uiState.insights)
+                    }
+                }
+                if (uiState.budgets.isNotEmpty()) {
+                    item {
+                        BudgetStrip(budgets = uiState.budgets)
                     }
                 }
                 item {
@@ -255,7 +268,8 @@ private fun Header(isPremium: Boolean) {
 private fun HealthCard(score: Int, label: String, explanation: String) {
     Card(
         shape = RoundedCornerShape(24.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = androidx.compose.foundation.BorderStroke(2.dp, Pine.copy(alpha = 0.5f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
         Box(
@@ -335,8 +349,13 @@ private fun TabRow(selected: HomeTab, onSelected: (HomeTab) -> Unit, inboxCount:
                     containerColor = Color.White,
                     labelColor = MutedInk
                 ),
-                border = null,
-                shape = RoundedCornerShape(20.dp)
+                border = FilterChipDefaults.filterChipBorder(
+                    enabled = true,
+                    selected = isSelected,
+                    borderColor = Pine.copy(alpha = 0.5f), 
+                    borderWidth = 2.dp
+                ),
+                shape = CircleShape
             )
         }
     }
@@ -380,7 +399,8 @@ private fun TransactionRow(
     Card(
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = androidx.compose.foundation.BorderStroke(2.dp, Pine.copy(alpha = 1.0f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
@@ -488,7 +508,8 @@ private fun InboxPrompt(suggestedCount: Int, onConfirmAll: () -> Unit) {
     Card(
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = Seafoam),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = androidx.compose.foundation.BorderStroke(2.dp, Pine.copy(alpha = 0.5f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -519,9 +540,10 @@ private fun RewindCard(candidates: List<TransactionCandidate>) {
         ?.key ?: "No Expenses Yet"
 
     Card(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Seafoam),
+        border = androidx.compose.foundation.BorderStroke(2.dp, Pine.copy(alpha = 0.5f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -554,7 +576,8 @@ private fun EmptyStateCard(title: String, description: String) {
     Card(
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = androidx.compose.foundation.BorderStroke(2.dp, Pine.copy(alpha = 0.5f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(
@@ -752,6 +775,155 @@ private fun InsightsRow(insights: List<InsightCardModel>) {
                             text = insight.body,
                             style = MaterialTheme.typography.bodySmall,
                             color = MutedInk
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BudgetStrip(budgets: List<com.expenseos.app.core.model.BudgetEnvelope>) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = "BUDGET HEALTH",
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = MutedInk,
+            modifier = Modifier.padding(start = 4.dp)
+        )
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(horizontal = 4.dp)
+        ) {
+            items(budgets, key = { it.id }) { budget ->
+                val progressColor = when {
+                    budget.progress >= 1f -> CoralPink
+                    budget.progress > 0.8f -> Gold
+                    else -> Pine
+                }
+                Card(
+                    modifier = Modifier.width(140.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = budget.category.label,
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Ink
+                        )
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            CircularProgressIndicator(
+                                progress = { budget.progress },
+                                modifier = Modifier.size(60.dp),
+                                color = progressColor,
+                                trackColor = progressColor.copy(alpha = 0.2f),
+                                strokeWidth = 6.dp
+                            )
+                            Text(
+                                text = "${(budget.progress * 100).toInt()}%",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Black,
+                                color = Ink
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun GamificationStrip(streak: Int, challenge: com.expenseos.app.features.gamification.DailyChallenge?) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        // Streak Card
+        Card(
+            modifier = Modifier.weight(0.4f),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = if (streak > 0) CoralPink.copy(alpha = 0.1f) else Color.White),
+            border = androidx.compose.foundation.BorderStroke(2.dp, Pine.copy(alpha = 0.5f)),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = if (streak > 0) "🔥" else "🧊",
+                    style = MaterialTheme.typography.headlineMedium
+                )
+                Text(
+                    text = "$streak Days",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Black,
+                    color = if (streak > 0) CoralPink else MutedInk
+                )
+                Text(
+                    text = "Streak",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MutedInk
+                )
+            }
+        }
+
+        // Daily Challenge Card
+        if (challenge != null) {
+            Card(
+                modifier = Modifier.weight(0.6f),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = if (challenge.isCompleted) Seafoam else Color.White),
+                border = androidx.compose.foundation.BorderStroke(2.dp, Pine.copy(alpha = 0.5f)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp).fillMaxHeight(),
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = challenge.emoji,
+                            style = MaterialTheme.typography.titleLarge
+                        )
+                        Column {
+                            Text(
+                                text = "Daily Challenge",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = if (challenge.isCompleted) Pine else MutedInk
+                            )
+                            Text(
+                                text = challenge.title,
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Black,
+                                color = if (challenge.isCompleted) Pine else Ink
+                            )
+                        }
+                    }
+                    if (challenge.isCompleted) {
+                        Text(
+                            text = "Completed! +${challenge.coinReward} Coins",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = Pine,
+                            modifier = Modifier.padding(top = 8.dp)
                         )
                     }
                 }

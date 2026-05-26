@@ -62,22 +62,26 @@ import com.expenseos.app.ui.theme.Mint
 import com.expenseos.app.ui.theme.MutedInk
 import com.expenseos.app.ui.theme.Paper
 import com.expenseos.app.ui.theme.Pine
+import com.expenseos.app.ui.theme.Seafoam
 import androidx.compose.ui.platform.LocalContext
 import com.expenseos.app.features.udhaar.UdhaarReminderHelper
 import java.text.NumberFormat
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
+import com.expenseos.app.ui.navigation.NavigationDestination
+
 @Composable
 fun UdhaarScreen(
     uiState: ExpenseOsUiState,
-    viewModel: ExpenseOsViewModel
+    viewModel: ExpenseOsViewModel,
+    onNavigate: ((NavigationDestination) -> Unit)? = null
 ) {
     var showAddDialog by remember { mutableStateOf(false) }
 
     Surface(
         modifier = Modifier.fillMaxSize(),
-        color = Paper
+        color = Color.Transparent
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             LazyColumn(
@@ -105,6 +109,33 @@ fun UdhaarScreen(
                 // Balance Sheet cards
                 item {
                     BalanceSheet(entries = uiState.udhaarEntries)
+                }
+
+                // Bill Splitter Banner
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth().clickable { onNavigate?.invoke(NavigationDestination.BILL_SPLIT) },
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = Seafoam),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column {
+                                Text("Split a Bill", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Pine)
+                                Text("Dinner with friends? Split the cost.", style = MaterialTheme.typography.bodySmall, color = Pine)
+                            }
+                            Box(
+                                modifier = Modifier.size(40.dp).clip(CircleShape).background(Color.White),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("🍕", style = MaterialTheme.typography.titleMedium)
+                            }
+                        }
+                    }
                 }
 
                 // Filter tabs (Given vs Received)
@@ -212,6 +243,7 @@ private fun BalanceSheet(entries: List<UdhaarEntry>) {
         Card(
             shape = RoundedCornerShape(20.dp),
             colors = CardDefaults.cardColors(containerColor = Mint.copy(alpha = 0.35f)),
+            border = androidx.compose.foundation.BorderStroke(2.dp, Pine.copy(alpha = 0.5f)),
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
             modifier = Modifier.weight(1f)
         ) {

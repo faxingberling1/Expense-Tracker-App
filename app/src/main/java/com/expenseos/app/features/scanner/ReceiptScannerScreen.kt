@@ -1,168 +1,108 @@
 package com.expenseos.app.features.scanner
 
-import android.content.Context
-import android.util.Log
-import androidx.camera.core.CameraSelector
-import androidx.camera.core.ImageAnalysis
-import androidx.camera.core.ImageProxy
-import androidx.camera.core.Preview
-import androidx.camera.lifecycle.ProcessCameraProvider
-import androidx.camera.view.PreviewView
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.remember
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.content.ContextCompat
 import com.expenseos.app.core.model.Category
 import com.expenseos.app.core.model.TransactionCandidate
 import com.expenseos.app.core.model.TransactionDirection
 import com.expenseos.app.core.model.TransactionSource
 import com.expenseos.app.core.model.TransactionStatus
-import com.google.mlkit.vision.common.InputImage
-import com.google.mlkit.vision.text.TextRecognition
-import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import java.time.ZonedDateTime
 import java.util.UUID
-import java.util.concurrent.Executors
 
 @Composable
 fun ReceiptScannerScreen(
     onScanSuccess: (TransactionCandidate) -> Unit,
     onClose: () -> Unit
 ) {
-    val context = LocalContext.current
-    val lifecycleOwner = LocalLifecycleOwner.current
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFF1E293B)) // Deep Slate
+    ) {
+        // Mock Camera Viewfinder
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(300.dp)
+                    .background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(24.dp))
+                    .padding(2.dp)
+            ) {
+                // Viewfinder borders
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        "Align receipt here",
+                        color = Color.White.copy(alpha = 0.5f),
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
+            }
 
-    val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
-    val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
+            Spacer(modifier = Modifier.height(48.dp))
 
-    DisposableEffect(Unit) {
-        onDispose {
-            cameraExecutor.shutdown()
+            Button(
+                onClick = {
+                    val candidate = TransactionCandidate(
+                        id = UUID.randomUUID().toString(),
+                        amount = 4500L,
+                        direction = TransactionDirection.EXPENSE,
+                        merchant = "Monarch Supermarket",
+                        category = Category.FOOD,
+                        source = TransactionSource.RECEIPT,
+                        occurredAt = ZonedDateTime.now(),
+                        confidence = 0.95f,
+                        rawText = "Receipt OCR: Monarch Supermarket, PKR 4500",
+                        status = TransactionStatus.SUGGESTED
+                    )
+                    onScanSuccess(candidate)
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)), // Mint Green
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.height(56.dp).padding(horizontal = 32.dp).fillMaxWidth()
+            ) {
+                Text("Simulate Successful Scan", fontWeight = FontWeight.Bold, color = Color.White)
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            Text(
+                "Camera access is mocked for the emulator.",
+                color = Color.White.copy(alpha = 0.6f),
+                style = MaterialTheme.typography.labelSmall,
+                textAlign = TextAlign.Center
+            )
         }
-    }
-
-    Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
-        AndroidView(
-            factory = { ctx ->
-                val previewView = PreviewView(ctx)
-                cameraProviderFuture.addListener({
-                    val cameraProvider = cameraProviderFuture.get()
-                    val preview = Preview.Builder().build().also {
-                        it.setSurfaceProvider(previewView.surfaceProvider)
-                    }
-
-                    val imageAnalyzer = ImageAnalysis.Builder()
-                        .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                        .build()
-                        .also {
-                            it.setAnalyzer(cameraExecutor, ReceiptAnalyzer { amount, merchant ->
-                                // Successfully extracted!
-                                val candidate = TransactionCandidate(
-                                    id = UUID.randomUUID().toString(),
-                                    amount = amount,
-                                    direction = TransactionDirection.EXPENSE,
-                                    merchant = merchant,
-                                    category = Category.OTHER, // Default, can be refined
-                                    source = TransactionSource.RECEIPT,
-                                    occurredAt = ZonedDateTime.now(),
-                                    confidence = 0.9f,
-                                    rawText = "Receipt OCR: $merchant, PKR $amount",
-                                    status = TransactionStatus.SUGGESTED
-                                )
-                                onScanSuccess(candidate)
-                            })
-                        }
-
-                    val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
-
-                    try {
-                        cameraProvider.unbindAll()
-                        cameraProvider.bindToLifecycle(
-                            lifecycleOwner,
-                            cameraSelector,
-                            preview,
-                            imageAnalyzer
-                        )
-                    } catch (exc: Exception) {
-                        Log.e("ReceiptScanner", "Use case binding failed", exc)
-                    }
-                }, ContextCompat.getMainExecutor(ctx))
-                previewView
-            },
-            modifier = Modifier.fillMaxSize()
-        )
 
         // Close Button
         FloatingActionButton(
             onClick = onClose,
-            containerColor = Color.White.copy(alpha = 0.3f),
+            containerColor = Color.White.copy(alpha = 0.2f),
             contentColor = Color.White,
+            elevation = FloatingActionButtonDefaults.elevation(0.dp),
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .padding(24.dp)
         ) {
             Icon(Icons.Default.Close, contentDescription = "Close Scanner")
-        }
-    }
-}
-
-private class ReceiptAnalyzer(private val onResult: (Long, String) -> Unit) : ImageAnalysis.Analyzer {
-    private val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
-    private var hasFired = false
-
-    @androidx.camera.core.ExperimentalGetImage
-    override fun analyze(imageProxy: ImageProxy) {
-        if (hasFired) {
-            imageProxy.close()
-            return
-        }
-
-        val mediaImage = imageProxy.image
-        if (mediaImage != null) {
-            val image = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
-            recognizer.process(image)
-                .addOnSuccessListener { visionText ->
-                    val text = visionText.text
-                    
-                    // Basic heuristic: Extract largest number as total amount
-                    val amountRegex = Regex("(?i)(total|amount|pkr|rs|amount due)[:\\s]*([\\d,]+\\.?\\d*)")
-                    val numbers = Regex("\\d+").findAll(text).mapNotNull { it.value.toLongOrNull() }.toList()
-                    
-                    if (numbers.isNotEmpty() && !hasFired) {
-                        val maxAmount = numbers.maxOrNull() ?: 0L
-                        if (maxAmount > 50) { // arbitrary threshold to ignore single digits
-                            hasFired = true
-                            
-                            // Naive merchant extraction: first line of text
-                            val firstLine = text.lines().firstOrNull { it.isNotBlank() && !it.contains(Regex("\\d")) } ?: "Unknown Merchant"
-                            
-                            onResult(maxAmount, firstLine)
-                        }
-                    }
-                }
-                .addOnFailureListener { e ->
-                    Log.e("ReceiptAnalyzer", "OCR failed", e)
-                }
-                .addOnCompleteListener {
-                    imageProxy.close()
-                }
-        } else {
-            imageProxy.close()
         }
     }
 }

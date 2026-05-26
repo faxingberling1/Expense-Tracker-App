@@ -4,6 +4,7 @@ import com.expenseos.app.core.model.Category
 import com.expenseos.app.core.model.TransactionCandidate
 import com.expenseos.app.core.model.TransactionDirection
 import com.expenseos.app.core.model.TransactionStatus
+import java.time.DayOfWeek
 import java.util.UUID
 
 class InsightsEngine {
@@ -63,6 +64,44 @@ class InsightsEngine {
                     title = "Great Tracking! 🎉",
                     body = "You've successfully logged ${confirmedExpenses.size} expenses. Consistency is key to financial health.",
                     type = InsightType.CELEBRATION
+                )
+            )
+        }
+
+        // 4. Weekend Spend Spike
+        val weekendExpenses = confirmedExpenses.filter { 
+            it.occurredAt.dayOfWeek == DayOfWeek.SATURDAY || it.occurredAt.dayOfWeek == DayOfWeek.SUNDAY 
+        }.sumOf { it.amount }
+        
+        val weekdayExpenses = confirmedExpenses.filter { 
+            it.occurredAt.dayOfWeek != DayOfWeek.SATURDAY && it.occurredAt.dayOfWeek != DayOfWeek.SUNDAY 
+        }.sumOf { it.amount }
+        
+        if (weekendExpenses > 0 && weekdayExpenses > 0 && weekendExpenses > weekdayExpenses * 1.5) {
+            insights.add(
+                InsightCardModel(
+                    id = UUID.randomUUID().toString(),
+                    title = "Weekend Splurges 🛍️",
+                    body = "Your weekend spending ($weekendExpenses) is much higher than your weekday spending ($weekdayExpenses). Watch out for impulse buys!",
+                    type = InsightType.WARNING
+                )
+            )
+        }
+
+        // 5. Subscription Leak Detector
+        val possibleSubscriptions = confirmedExpenses
+            .groupBy { it.merchant.lowercase() }
+            .filter { entry -> entry.value.size >= 2 && entry.value.distinctBy { it.amount }.size == 1 }
+        
+        if (possibleSubscriptions.isNotEmpty()) {
+            val merchantName = possibleSubscriptions.keys.first().replaceFirstChar { it.uppercase() }
+            val amount = possibleSubscriptions.values.first().first().amount
+            insights.add(
+                InsightCardModel(
+                    id = UUID.randomUUID().toString(),
+                    title = "Subscription Detected 🔄",
+                    body = "You have multiple identical charges of PKR $amount at $merchantName. Is this an active subscription?",
+                    type = InsightType.TIP
                 )
             )
         }

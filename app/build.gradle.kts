@@ -54,5 +54,8 @@ dependencies {
 
     ksp(libs.androidx.room.compiler)
 
+    // QR Code Generation
+    implementation("com.google.zxing:core:3.5.3")
+
     debugImplementation(libs.androidx.compose.ui.tooling)
 }
