@@ -43,6 +43,14 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.kotlinx.coroutines.android)
+    
+    // ML Kit and CameraX (Version literals for simplicity, normally in TOML)
+    implementation("com.google.mlkit:text-recognition:16.0.1")
+    val camerax_version = "1.4.0-alpha02"
+    implementation("androidx.camera:camera-core:$camerax_version")
+    implementation("androidx.camera:camera-camera2:$camerax_version")
+    implementation("androidx.camera:camera-lifecycle:$camerax_version")
+    implementation("androidx.camera:camera-view:$camerax_version")
 
     ksp(libs.androidx.room.compiler)
 

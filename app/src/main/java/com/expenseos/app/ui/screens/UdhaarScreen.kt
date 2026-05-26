@@ -56,11 +56,14 @@ import com.expenseos.app.ui.ExpenseOsUiState
 import com.expenseos.app.ui.ExpenseOsViewModel
 import com.expenseos.app.ui.UdhaarFilter
 import com.expenseos.app.ui.theme.Coral
+import com.expenseos.app.ui.theme.CoralPink
 import com.expenseos.app.ui.theme.Gold
 import com.expenseos.app.ui.theme.Mint
 import com.expenseos.app.ui.theme.MutedInk
 import com.expenseos.app.ui.theme.Paper
 import com.expenseos.app.ui.theme.Pine
+import androidx.compose.ui.platform.LocalContext
+import com.expenseos.app.features.udhaar.UdhaarReminderHelper
 import java.text.NumberFormat
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -207,10 +210,10 @@ private fun BalanceSheet(entries: List<UdhaarEntry>) {
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Card(
-            modifier = Modifier.weight(1f),
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(20.dp),
             colors = CardDefaults.cardColors(containerColor = Mint.copy(alpha = 0.35f)),
-            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+            modifier = Modifier.weight(1f)
         ) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text("Owed to you (Given)", color = Pine, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
@@ -219,8 +222,8 @@ private fun BalanceSheet(entries: List<UdhaarEntry>) {
         }
         Card(
             modifier = Modifier.weight(1f),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = Coral.copy(alpha = 0.15f)),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = CoralPink.copy(alpha = 0.15f)),
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
         ) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -263,6 +266,7 @@ private fun UdhaarCard(
     entry: UdhaarEntry,
     onSettle: (() -> Unit)?
 ) {
+    val context = LocalContext.current
     Card(
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
@@ -273,73 +277,94 @@ private fun UdhaarCard(
         ),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Contact Circle Avatar
-            ContactAvatar(name = entry.contactName, isSettled = entry.isSettled, type = entry.type)
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Contact Circle Avatar
+                ContactAvatar(name = entry.contactName, isSettled = entry.isSettled, type = entry.type)
 
-            Spacer(Modifier.width(12.dp))
+                Spacer(Modifier.width(12.dp))
 
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = entry.contactName,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = if (entry.isSettled) MutedInk else Pine,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                if (!entry.note.isNullOrBlank()) {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = entry.note,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MutedInk,
+                        text = entry.contactName,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = if (entry.isSettled) MutedInk else Pine,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                }
-                Text(
-                    text = if (entry.isSettled) {
-                        "Settled on ${entry.settledAt?.format(DateTimeFormatter.ofPattern("MMM d, yyyy"))}"
-                    } else {
-                        "Due by ${entry.dueDate?.format(DateTimeFormatter.ofPattern("MMM d"))}"
-                    },
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MutedInk
-                )
-            }
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text(
-                    text = formatPkr(entry.amount),
-                    color = if (entry.isSettled) MutedInk else if (entry.type == UdhaarType.GIVEN) Pine else Coral,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.ExtraBold
-                )
-
-                if (onSettle != null) {
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(CircleShape)
-                            .background(Mint.copy(alpha = 0.5f))
-                            .clickable { onSettle() }
-                    ) {
-                        Icon(
-                            Icons.Default.Check,
-                            contentDescription = "Settle Debt",
-                            tint = Pine,
-                            modifier = Modifier.size(18.dp)
+                    if (!entry.note.isNullOrBlank()) {
+                        Text(
+                            text = entry.note,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MutedInk,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
+                    Text(
+                        text = if (entry.isSettled) {
+                            "Settled on ${entry.settledAt?.format(DateTimeFormatter.ofPattern("MMM d, yyyy"))}"
+                        } else {
+                            "Due by ${entry.dueDate?.format(DateTimeFormatter.ofPattern("MMM d"))}"
+                        },
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MutedInk
+                    )
+                }
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = formatPkr(entry.amount),
+                        color = if (entry.isSettled) MutedInk else if (entry.type == UdhaarType.GIVEN) Pine else Coral,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.ExtraBold
+                    )
+
+                    if (onSettle != null) {
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(Mint.copy(alpha = 0.5f))
+                                .clickable { onSettle() }
+                        ) {
+                            Icon(
+                                Icons.Default.Check,
+                                contentDescription = "Settle Debt",
+                                tint = Pine,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Action row for active entries
+            if (!entry.isSettled && onSettle != null) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Pine.copy(alpha = 0.05f))
+                        .clickable { UdhaarReminderHelper.sendWhatsAppReminder(context, entry) }
+                        .padding(vertical = 10.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Send Reminder 📱",
+                        color = Pine,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.ExtraBold
+                    )
                 }
             }
         }

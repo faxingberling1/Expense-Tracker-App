@@ -42,6 +42,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.expenseos.app.ui.navigation.NavigationDestination
+import com.expenseos.app.ui.screens.CalendarScreen
 import com.expenseos.app.ui.screens.HomeScreen
 import com.expenseos.app.ui.screens.ProfileScreen
 import com.expenseos.app.ui.screens.RewardsScreen
@@ -111,6 +112,7 @@ fun ExpenseOsApp(viewModel: ExpenseOsViewModel = viewModel()) {
             // Screen Routing
             when (currentDestination) {
                 NavigationDestination.HOME -> HomeScreen(uiState = uiState, viewModel = viewModel)
+                NavigationDestination.CALENDAR -> CalendarScreen(uiState = uiState, viewModel = viewModel)
                 NavigationDestination.UDHAAR -> UdhaarScreen(uiState = uiState, viewModel = viewModel)
                 NavigationDestination.REWARDS -> RewardsScreen(uiState = uiState, viewModel = viewModel)
                 NavigationDestination.PROFILE -> ProfileScreen(uiState = uiState, viewModel = viewModel)

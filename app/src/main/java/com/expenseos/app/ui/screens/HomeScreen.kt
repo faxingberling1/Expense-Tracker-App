@@ -61,15 +61,24 @@ import com.expenseos.app.features.home.HomeTab
 import com.expenseos.app.ui.ExpenseOsUiState
 import com.expenseos.app.ui.ExpenseOsViewModel
 import com.expenseos.app.ui.theme.Coral
+import com.expenseos.app.ui.theme.CoralPink
 import com.expenseos.app.ui.theme.Gold
 import com.expenseos.app.ui.theme.Ink
 import com.expenseos.app.ui.theme.Mint
 import com.expenseos.app.ui.theme.MutedInk
 import com.expenseos.app.ui.theme.Paper
 import com.expenseos.app.ui.theme.Pine
+import com.expenseos.app.ui.theme.Seafoam
+import com.expenseos.app.features.insights.InsightCardModel
+import com.expenseos.app.features.insights.InsightType
+import androidx.compose.foundation.lazy.LazyRow
 import java.text.NumberFormat
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+
+import androidx.compose.material.icons.filled.Add
+import com.expenseos.app.features.scanner.ReceiptScannerScreen
+import androidx.compose.material3.FloatingActionButton
 
 @Composable
 fun HomeScreen(
@@ -77,6 +86,20 @@ fun HomeScreen(
     viewModel: ExpenseOsViewModel
 ) {
     var isSimulatorExpanded by remember { mutableStateOf(false) }
+    var showScanner by remember { mutableStateOf(false) }
+
+    if (showScanner) {
+        ReceiptScannerScreen(
+            onScanSuccess = { candidate ->
+                showScanner = false
+                // Use existing simulate pipeline to handle adding to DB and Inbox
+                // We'll adapt it to add directly using a new viewmodel function or just a hack via text
+                viewModel.simulateParsedText(candidate.rawText, false) // Fallback via text, but ideally we add a direct method.
+            },
+            onClose = { showScanner = false }
+        )
+        return
+    }
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -97,6 +120,11 @@ fun HomeScreen(
                         label = uiState.health.label,
                         explanation = uiState.health.explanation
                     )
+                }
+                if (uiState.insights.isNotEmpty()) {
+                    item {
+                        InsightsRow(insights = uiState.insights)
+                    }
                 }
                 item {
                     TabRow(
@@ -155,6 +183,19 @@ fun HomeScreen(
                 }
             }
 
+            // Floating Action Button for Scanner
+            FloatingActionButton(
+                onClick = { showScanner = true },
+                containerColor = Mint,
+                contentColor = Pine,
+                shape = CircleShape,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 24.dp, bottom = 100.dp) // Offset above simulator
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Scan Receipt")
+            }
+
             // Collapsible Simulator HUD at the absolute bottom
             Box(
                 modifier = Modifier
@@ -183,8 +224,8 @@ private fun Header(isPremium: Boolean) {
             Text(
                 text = "Expense OS",
                 style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.ExtraBold,
-                color = Pine
+                fontWeight = FontWeight.Black,
+                color = Ink
             )
             Text(
                 text = "Your money, automatically understood.",
@@ -213,11 +254,16 @@ private fun Header(isPremium: Boolean) {
 @Composable
 private fun HealthCard(score: Int, label: String, explanation: String) {
     Card(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Pine),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        shape = RoundedCornerShape(24.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        modifier = Modifier.fillMaxWidth()
     ) {
-        Column(
+        Box(
+            modifier = Modifier
+                .background(Brush.linearGradient(listOf(Pine, Color(0xFF00C78C))))
+                .fillMaxWidth()
+        ) {
+            Column(
             modifier = Modifier.padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
@@ -226,22 +272,22 @@ private fun HealthCard(score: Int, label: String, explanation: String) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text("FINANCIAL HEALTH", color = Mint.copy(alpha = 0.8f), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
-                    Text(label, color = Gold, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold)
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("FINANCIAL HEALTH", color = Color.White.copy(alpha = 0.8f), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                    Text(label, color = Color.White, style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Black)
                 }
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
-                        .size(56.dp)
+                        .size(64.dp)
                         .clip(CircleShape)
-                        .background(Mint.copy(alpha = 0.15f))
+                        .background(Color.White.copy(alpha = 0.2f))
                 ) {
                     Text(
                         text = score.toString(),
-                        color = Gold,
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.ExtraBold
+                        color = Color.White,
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Black
                     )
                 }
             }
@@ -249,13 +295,14 @@ private fun HealthCard(score: Int, label: String, explanation: String) {
                 progress = { score / 100f },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(8.dp)
-                    .clip(RoundedCornerShape(4.dp)),
-                color = Gold,
-                trackColor = Mint.copy(alpha = 0.2f)
+                    .height(6.dp)
+                    .clip(RoundedCornerShape(3.dp)),
+                color = Color.White,
+                trackColor = Color.White.copy(alpha = 0.3f)
             )
-            Text(explanation, color = Mint, style = MaterialTheme.typography.bodyMedium)
+            Text(explanation, color = Color.White.copy(alpha = 0.9f), style = MaterialTheme.typography.bodyMedium)
         }
+    }
     }
 }
 
@@ -313,13 +360,13 @@ private fun TimelineSummary(candidates: List<TransactionCandidate>) {
 private fun MetricCard(label: String, value: String, accent: Color, modifier: Modifier = Modifier) {
     Card(
         modifier = modifier,
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(label, color = MutedInk, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
-            Text(value, color = accent, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold)
+            Text(value, color = accent, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
         }
     }
 }
@@ -331,9 +378,9 @@ private fun TransactionRow(
     onConfirm: (() -> Unit)? = null
 ) {
     Card(
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
@@ -439,8 +486,8 @@ private fun SourceDot(source: TransactionSource) {
 @Composable
 private fun InboxPrompt(suggestedCount: Int, onConfirmAll: () -> Unit) {
     Card(
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Mint.copy(alpha = 0.35f)),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Seafoam),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -544,9 +591,9 @@ private fun SimulatorConsole(
     )
 
     Card(
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(24.dp, 24.dp, 0.dp, 0.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 16.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column {
@@ -658,4 +705,57 @@ private fun signedAmount(candidate: TransactionCandidate): String {
 private fun formatPkr(amount: Long): String {
     val formatter = NumberFormat.getNumberInstance(Locale("en", "PK"))
     return "Rs ${formatter.format(amount)}"
+}
+
+@Composable
+private fun InsightsRow(insights: List<InsightCardModel>) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = "FINANCIAL INSIGHTS",
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = MutedInk,
+            modifier = Modifier.padding(start = 4.dp)
+        )
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(horizontal = 4.dp)
+        ) {
+            items(insights, key = { it.id }) { insight ->
+                Card(
+                    modifier = Modifier.width(280.dp),
+                    shape = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = when (insight.type) {
+                            InsightType.WARNING -> CoralPink.copy(alpha = 0.1f)
+                            InsightType.CELEBRATION -> Seafoam
+                            else -> Color.White
+                        }
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = insight.title,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = when (insight.type) {
+                                InsightType.WARNING -> Coral
+                                InsightType.CELEBRATION -> Pine
+                                else -> Ink
+                            }
+                        )
+                        Text(
+                            text = insight.body,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MutedInk
+                        )
+                    }
+                }
+            }
+        }
+    }
 }

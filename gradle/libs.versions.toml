@@ -24,6 +24,7 @@ androidx-room-ktx = { module = "androidx.room:room-ktx", version.ref = "room" }
 androidx-runtime-livedata = { module = "androidx.compose.runtime:runtime-livedata" }
 androidx-work-runtime-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "work" }
 kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
+mlkit-text-recognition = { module = "com.google.mlkit:text-recognition", version = "16.0.1" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
