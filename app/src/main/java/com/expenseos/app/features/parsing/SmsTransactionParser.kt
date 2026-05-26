@@ -8,13 +8,16 @@ import java.time.ZonedDateTime
 class SmsTransactionParser(
     private val categoryClassifier: CategoryClassifier = CategoryClassifier()
 ) : TransactionParser {
-    private val amountRegex = Regex("""(?i)(?:rs\.?|pkr)\s*([0-9,]+(?:\.\d{1,2})?)|([0-9,]+(?:\.\d{1,2})?)\s*(?:rs\.?|pkr)""")
+    // Enhanced to cover "Rs500", "PKR 5,000", "Amount: Rs.50", "Amount PKR 1000"
+    private val amountRegex = Regex("""(?i)(?:rs\.?|pkr|amount:?)\s*(?:rs\.?)?\s*([0-9,]+(?:\.\d{1,2})?)|([0-9,]+(?:\.\d{1,2})?)\s*(?:rs\.?|pkr)""")
 
     override fun parse(rawText: String): TransactionCandidate? {
-        val amount = amountRegex.find(rawText)?.groupValues
-            ?.drop(1)
-            ?.firstOrNull { it.isNotBlank() }
-            ?.replace(",", "")
+        // Try both match groups depending on whether currency was prefix or suffix
+        val amountStr = amountRegex.find(rawText)?.let { match ->
+            match.groupValues[1].takeIf { it.isNotBlank() } ?: match.groupValues[2].takeIf { it.isNotBlank() }
+        }
+
+        val amount = amountStr?.replace(",", "")
             ?.toDoubleOrNull()
             ?.toLong()
             ?: return null
@@ -38,10 +41,11 @@ class SmsTransactionParser(
     private fun inferDirection(text: String): TransactionDirection {
         val normalized = text.lowercase()
         return when {
-            listOf("debited", "purchase", "paid", "sent", "withdrawn", "cash out").any(normalized::contains) -> TransactionDirection.EXPENSE
-            listOf("credited", "received", "salary", "cash in").any(normalized::contains) -> TransactionDirection.INCOME
+            // Expanded keywords for local SMS contexts
+            listOf("debited", "purchase", "paid", "sent", "withdrawn", "cash out", "payment of", "deducted").any(normalized::contains) -> TransactionDirection.EXPENSE
+            listOf("credited", "received", "salary", "cash in", "deposited", "added to").any(normalized::contains) -> TransactionDirection.INCOME
             listOf("ibft", "transfer").any(normalized::contains) -> TransactionDirection.TRANSFER
-            listOf("refund", "reversed").any(normalized::contains) -> TransactionDirection.REFUND
+            listOf("refund", "reversed", "reversal").any(normalized::contains) -> TransactionDirection.REFUND
             else -> TransactionDirection.UNKNOWN
         }
     }
@@ -50,12 +54,15 @@ class SmsTransactionParser(
         val compact = text.replace(Regex("""\s+"""), " ").trim()
         val patterns = when (direction) {
             TransactionDirection.INCOME -> listOf(
-                Regex("""(?i)received from ([A-Za-z0-9 ._-]+)"""),
-                Regex("""(?i)credited from ([A-Za-z0-9 ._-]+)""")
+                Regex("""(?i)received from ([A-Za-z0-9 ._-]+?)(?: via|\.|,| on | ref| txn|$)"""),
+                Regex("""(?i)credited from ([A-Za-z0-9 ._-]+?)(?: via|\.|,| on | ref| txn|$)""")
             )
             else -> listOf(
-                Regex("""(?i)(?:to|at|for) ([A-Za-z0-9 ._-]+?)(?:\.|,| on | ref| txn|$)"""),
-                Regex("""(?i)merchant ([A-Za-z0-9 ._-]+?)(?:\.|,| on | ref| txn|$)""")
+                // Specific patterns for Easypaisa, JazzCash, Foodpanda, Careem
+                Regex("""(?i)sent to ([A-Za-z0-9 ._-]+?)(?: via|\.|,| on | ref| txn|$)"""),
+                Regex("""(?i)paid to ([A-Za-z0-9 ._-]+?)(?: via|\.|,| on | ref| txn|$)"""),
+                Regex("""(?i)(?:to|at|for) ([A-Za-z0-9 ._-]+?)(?: via|\.|,| on | ref| txn|$)"""),
+                Regex("""(?i)merchant ([A-Za-z0-9 ._-]+?)(?: via|\.|,| on | ref| txn|$)""")
             )
         }
 
